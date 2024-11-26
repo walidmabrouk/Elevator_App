@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("crudmongo")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+36f6926598b7d86b3e9afe3abf4bf65e1f138d96")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+33d87449777feead5a3c47d35664c47a5c5fc970")]
 [assembly: System.Reflection.AssemblyProductAttribute("crudmongo")]
 [assembly: System.Reflection.AssemblyTitleAttribute("crudmongo")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

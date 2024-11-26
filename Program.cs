@@ -8,6 +8,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.Configure<DatabaseSettings>(builder.Configuration.GetSection(key: "MongoDatabase"));
 builder.Services.AddSingleton<ElevatorService>();
 builder.Services.AddSingleton<IMqttClientService, MqttClientService>();
+
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
@@ -27,26 +28,25 @@ if (app.Environment.IsDevelopment())
 }
 app.MapGet("/", () => "Bienvenue sur le serveur WebSocket!");
 
-app.Map("/ws", async (HttpContext context, CancellationToken cancellationToken, ElevatorService statusService) =>
+app.Map("/ws", async (HttpContext context, CancellationToken cancellationToken, ElevatorService statusService, IMqttClientService mqttClientService) =>
 {
     if (context.WebSockets.IsWebSocketRequest)
     {
         var socket = await context.WebSockets.AcceptWebSocketAsync();
 
-
-        // Créer le service WebSocket et gérer la connexion
+        // Créer le service WebSocket avec l'instance IMqttClientService
         var webSocketHandler = new WebSocketHandler(socket);
-
-        var webSocketService = new WebSocketService(webSocketHandler, statusService);
+        var webSocketService = new WebSocketService(webSocketHandler, statusService, mqttClientService);
 
         // Traiter la connexion WebSocket
         await webSocketService.HandleWebSocketConnectionAsync(socket, cancellationToken);
     }
     else
     {
-        context.Response.StatusCode = 400;
+        context.Response.StatusCode = 400;  // Si ce n'est pas une requête WebSocket
     }
 });
+
 app.UseHttpsRedirection();
 
 app.UseAuthorization();

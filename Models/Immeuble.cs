@@ -10,7 +10,7 @@ namespace FirstWebApp.Domaine.Entities
         public string Id { get; set; }
 
         [JsonPropertyName("ascenseurs")]
-        public List<Ascenseur> Ascenseurs { get; set; }
+        public List<Elevator> Ascenseurs { get; set; }
 
     }
 }

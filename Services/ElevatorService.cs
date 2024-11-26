@@ -1,8 +1,7 @@
 ﻿using crudmongo.Configurations;
+using crudmongo.Models;
 using Microsoft.Extensions.Options;
 using MongoDB.Driver;
-using crudmongo.Models;
-using System;
 
 namespace crudmongo.Services
 {
@@ -10,8 +9,7 @@ namespace crudmongo.Services
     {
         private readonly IMongoCollection<Elevator> _elevatorCollection;
 
-        // Événement pour notifier les changements de données
-        public event Action<List<Elevator>> OnDataUpdated;
+        public event Action<List<Elevator>>? OnDataUpdated;
 
         public ElevatorService(IOptions<DatabaseSettings> databaseSettings)
         {
@@ -25,35 +23,58 @@ namespace crudmongo.Services
             return await _elevatorCollection.Find(_ => true).ToListAsync();
         }
 
-        public async Task<List<Elevator>> GetAsync() =>
-            await _elevatorCollection.Find(filter: _ => true).ToListAsync();
-
-        public async Task<Elevator> GetAsync(string id) =>
-            await _elevatorCollection.Find(filter: x => x.Id == id).FirstOrDefaultAsync();
+        public async Task<Elevator?> GetAsync(string id)
+        {
+            return await _elevatorCollection.Find(x => x.Id == id).FirstOrDefaultAsync();
+        }
 
         public async Task CreateAsync(Elevator elevator)
         {
             await _elevatorCollection.InsertOneAsync(elevator);
-            // Notifier les abonnés des changements
-            NotifyDataChange();
+            await NotifyDataChangeAsync();
         }
 
-        public async Task UpdateAsync(Elevator elevator)
+        public async Task<bool> UpdateAsync(Elevator elevator)
         {
+            if (string.IsNullOrEmpty(elevator.Id))
+            {
+                Console.WriteLine("Elevator ID is null or empty.");
+                return false;
+            }
 
-            await _elevatorCollection.ReplaceOneAsync(e => e.Id == elevator.Id, elevator);
-            // Notifier les abonnés des changements
-            NotifyDataChange();
+            try
+            {
+                var result = await _elevatorCollection.ReplaceOneAsync(
+                    e => e.Id == elevator.Id,
+                    elevator
+                );
+
+                if (result.IsAcknowledged && result.ModifiedCount > 0)
+                {
+                    await NotifyDataChangeAsync();
+                    return true;
+                }
+                else
+                {
+                    Console.WriteLine($"Elevator with ID {elevator.Id} not found.");
+                    return false;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error updating elevator: {ex.Message}");
+                return false;
+            }
         }
+
 
         public async Task RemoveAsync(string id)
         {
-            await _elevatorCollection.DeleteOneAsync(filter: x => x.Id == id);
-            // Notifier les abonnés des changements
-            NotifyDataChange();
+            await _elevatorCollection.DeleteOneAsync(x => x.Id == id);
+            await NotifyDataChangeAsync();
         }
 
-        private async void NotifyDataChange()
+        private async Task NotifyDataChangeAsync()
         {
             var updatedData = await GetAllAsync();
             OnDataUpdated?.Invoke(updatedData);

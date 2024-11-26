@@ -1,11 +1,14 @@
 ﻿using System.Text;
-using FirstWebApp.Domaine.services;
+using System.Text.Json;
 using MQTTnet;
 using MQTTnet.Client;
 using MQTTnet.Client.Options;
 using MQTTnet.Client.Subscribing;
-using System.Text.Json;
+using crudmongo.Services;
+using crudmongo.Models;
 using FirstWebApp.Domaine.Entities;
+using FirstWebApp.Domaine.services;
+using MongoDB.Bson;
 
 namespace FirstWebApp.Infra.ServicesImp
 {
@@ -13,25 +16,31 @@ namespace FirstWebApp.Infra.ServicesImp
     {
         private readonly IMqttClient _mqttClient;
         private readonly IMqttClientOptions _mqttOptions;
+        private readonly ElevatorService _elevatorService;
 
-        public MqttClientService()
+        public MqttClientService(ElevatorService elevatorService)
         {
-            // Initialize MQTT options
+            _elevatorService = elevatorService;
+
+            // Configure MQTT client options
             _mqttOptions = new MqttClientOptionsBuilder()
-                .WithClientId("AscenseurApiClient") // Unique client ID
-                .WithTcpServer("192.168.101.141", 1883) // MQTT broker details
-                .WithCleanSession() // Ensure a clean session
+                .WithClientId("AscenseurApiClient")
+                .WithTcpServer("192.168.220.1", 1883)
+                .WithCleanSession()
                 .Build();
 
-            // Create the MQTT client
             _mqttClient = new MqttFactory().CreateMqttClient();
 
-            // Configure connection handler
+            ConfigureMqttClientHandlers();
+        }
+
+        private void ConfigureMqttClientHandlers()
+        {
+            // Handle successful connection
             _mqttClient.UseConnectedHandler(async e =>
             {
                 Console.WriteLine("Connected to MQTT broker.");
 
-                // Subscribe to topics upon successful connection
                 var subscribeOptions = new MqttClientSubscribeOptionsBuilder()
                     .WithTopicFilter("test/topic")
                     .Build();
@@ -40,69 +49,96 @@ namespace FirstWebApp.Infra.ServicesImp
                 Console.WriteLine("Subscribed to topic: test/topic");
             });
 
-            // Configure disconnection handler
+            // Handle disconnection
             _mqttClient.UseDisconnectedHandler(e =>
             {
                 Console.WriteLine("Disconnected from MQTT broker.");
             });
 
-            // Configure message reception handler
-            _mqttClient.UseApplicationMessageReceivedHandler(e =>
+            // Handle incoming messages
+            _mqttClient.UseApplicationMessageReceivedHandler(async e =>
             {
                 var topic = e.ApplicationMessage.Topic;
                 var payload = Encoding.UTF8.GetString(e.ApplicationMessage.Payload);
 
-                var proprietaire = JsonSerializer.Deserialize<Proprietaire>(payload);
+                Console.WriteLine($"Message received on topic '{topic}': {payload}");
 
-                // Access deserialized data
-                if (proprietaire != null)
+                try
                 {
-                    Console.WriteLine($"Owner ID: {proprietaire.Id}");
-                    foreach (var immeuble in proprietaire.Immeubles)
+                    var proprietaire = JsonSerializer.Deserialize<Proprietaire>(payload);
+                    if (proprietaire == null)
                     {
-                        Console.WriteLine($"  Building ID: {immeuble.Id}");
-                        foreach (var ascenseur in immeuble.Ascenseurs)
+                        Console.WriteLine("Failed to deserialize the payload into a 'Proprietaire' object.");
+                        return;
+                    }
+
+                    await ProcessProprietaireData(proprietaire, topic);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error processing message: {ex.Message}");
+                }
+            });
+        }
+
+        private async Task ProcessProprietaireData(Proprietaire proprietaire, string topic)
+        {
+            Console.WriteLine($"Processing owner data: {proprietaire.Id}");
+
+            foreach (var immeuble in proprietaire.Immeubles)
+            {
+                Console.WriteLine($"  Building ID: {immeuble.Id}");
+                foreach (var ascenseur in immeuble.Ascenseurs)
+                {
+                    Console.WriteLine($"    Elevator data: {ascenseur.Id}, State: {ascenseur.State}");
+
+                    if (topic == "test/topic")
+                    {
+                        // Vérifier si l'ID est un ObjectId valide
+                        string elevatorId = ascenseur.Id ?? "000000000000000000000000"; // Fallback ID par défaut
+                        if (!ObjectId.TryParse(elevatorId, out var objectId))
                         {
-                            Console.WriteLine(ascenseur);
-                            if (topic == "test/topic")
+                            Console.WriteLine($"Invalid ObjectId format for elevator ID: {elevatorId}");
+                            continue;
+                        }
+
+
+                        var elevator = new Elevator
+                        {
+                            Id = ascenseur.Id,
+                            State = ascenseur.State ?? "Unknown",
+                            Floor = ascenseur.Floor ?? "0",
+                            Direction = ascenseur.Direction ?? "Stationary"
+                        };
+
+                        try
+                        {
+                            var updateSuccess = await _elevatorService.UpdateAsync(elevator);
+
+                            if (updateSuccess)
                             {
-                                Console.WriteLine(ascenseur.Etat);
-                                if (ascenseur.Etat == "ASCENSEUR EST EN ETAGE 0")
-                                {
-                                    Console.WriteLine($"    Elevator ID: {ascenseur.Id}, State: {ascenseur.Etat}");
-                                }
-                                else if (ascenseur.Etat == "ASCENSEUR EST EN ETAGE 1")
-                                {
-                                    Console.WriteLine($"    Elevator ID: {ascenseur.Id}, State: {ascenseur.Etat}");
-                                }
-                                else if (ascenseur.Etat == "ASCENSEUR EST MONTANT")
-                                {
-                                    Console.WriteLine($"    Elevator ID: {ascenseur.Id}, State: {ascenseur.Etat}");
-                                }
-                                else if (ascenseur.Etat == "ASCENSEUR EST DESCENDANT")
-                                {
-                                    Console.WriteLine($"    Elevator ID: {ascenseur.Id}, State: {ascenseur.Etat}");
-                                }
-                                else
-                                {
-                                    Console.WriteLine("Unhandled action in message.");
-                                }
+                                Console.WriteLine($"Elevator {ascenseur.Id} updated successfully.");
                             }
                             else
                             {
-                                Console.WriteLine($"Unhandled topic: {topic}");
+                                Console.WriteLine($"Failed to update elevator {ascenseur.Id}.");
                             }
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"Error updating elevator: {ex.Message}");
                         }
                     }
                 }
-                else
-                {
-                    Console.WriteLine("Failed to deserialize the payload.");
-                }
-
-            });
-            
+            }
         }
+
+        // Méthode pour vérifier si une chaîne est un ObjectId valide
+        private bool IsValidObjectId(string id)
+        {
+            return !string.IsNullOrEmpty(id) && id.Length == 24 && id.All(c => Uri.IsHexDigit(c));
+        }
+
 
         public async Task ConnectAsync()
         {
@@ -121,25 +157,25 @@ namespace FirstWebApp.Infra.ServicesImp
         {
             if (!_mqttClient.IsConnected)
             {
+                Console.WriteLine("MQTT client is not connected. Attempting to reconnect...");
                 await _mqttClient.ReconnectAsync();
             }
 
             if (_mqttClient.IsConnected)
             {
                 var mqttMessage = new MqttApplicationMessageBuilder()
-                    .WithTopic(topic) // Target topic
-                    .WithPayload(message) // Message payload
+                    .WithTopic(topic)
+                    .WithPayload(message)
                     .WithQualityOfServiceLevel(MQTTnet.Protocol.MqttQualityOfServiceLevel.AtLeastOnce)
                     .Build();
 
                 await _mqttClient.PublishAsync(mqttMessage, CancellationToken.None);
-                Console.WriteLine($"Message published to {topic}: {message}");
+                Console.WriteLine($"Message published to topic '{topic}': {message}");
             }
             else
             {
-                Console.WriteLine("MQTT client is not connected. Cannot publish message.");
+                Console.WriteLine("Failed to publish message: MQTT client is not connected.");
             }
-
         }
     }
 }

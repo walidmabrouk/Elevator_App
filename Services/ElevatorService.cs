@@ -40,6 +40,7 @@ namespace crudmongo.Services
 
         public async Task UpdateAsync(Elevator elevator)
         {
+
             await _elevatorCollection.ReplaceOneAsync(e => e.Id == elevator.Id, elevator);
             // Notifier les abonnés des changements
             NotifyDataChange();

@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using crudmongo.Models;
+using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
 namespace FirstWebApp.Domaine.Entities

@@ -1,15 +1,11 @@
-﻿using System;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
+﻿using System.Text;
 using FirstWebApp.Domaine.services;
-using FirstWebApp.Domaine.Entities;
 using MQTTnet;
 using MQTTnet.Client;
 using MQTTnet.Client.Options;
 using MQTTnet.Client.Subscribing;
 using System.Text.Json;
-using System.Text.Json.Serialization;
+using FirstWebApp.Domaine.Entities;
 
 namespace FirstWebApp.Infra.ServicesImp
 {
@@ -23,7 +19,7 @@ namespace FirstWebApp.Infra.ServicesImp
             // Initialize MQTT options
             _mqttOptions = new MqttClientOptionsBuilder()
                 .WithClientId("AscenseurApiClient") // Unique client ID
-                .WithTcpServer("192.168.248.141", 1883) // MQTT broker details
+                .WithTcpServer("192.168.101.141", 1883) // MQTT broker details
                 .WithCleanSession() // Ensure a clean session
                 .Build();
 
@@ -67,9 +63,10 @@ namespace FirstWebApp.Infra.ServicesImp
                         Console.WriteLine($"  Building ID: {immeuble.Id}");
                         foreach (var ascenseur in immeuble.Ascenseurs)
                         {
-                            
+                            Console.WriteLine(ascenseur);
                             if (topic == "test/topic")
                             {
+                                Console.WriteLine(ascenseur.Etat);
                                 if (ascenseur.Etat == "ASCENSEUR EST EN ETAGE 0")
                                 {
                                     Console.WriteLine($"    Elevator ID: {ascenseur.Id}, State: {ascenseur.Etat}");

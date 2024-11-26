@@ -42,3 +42,5 @@ C:\Users\walid\OneDrive\Documents\Visual Studio 2022\Projects\crudmongo\crudmong
 C:\Users\walid\OneDrive\Documents\Visual Studio 2022\Projects\crudmongo\crudmongo\obj\Debug\net8.0\crudmongo.genruntimeconfig.cache
 C:\Users\walid\OneDrive\Documents\Visual Studio 2022\Projects\crudmongo\crudmongo\obj\Debug\net8.0\ref\crudmongo.dll
 C:\Users\walid\OneDrive\Documents\Visual Studio 2022\Projects\crudmongo\crudmongo\bin\Debug\net8.0\Newtonsoft.Json.dll
+C:\Users\walid\OneDrive\Documents\Visual Studio 2022\Projects\crudmongo\crudmongo\bin\Debug\net8.0\MQTTnet.dll
+C:\Users\walid\OneDrive\Documents\Visual Studio 2022\Projects\crudmongo\crudmongo\obj\Debug\net8.0\crudmongo.sourcelink.json

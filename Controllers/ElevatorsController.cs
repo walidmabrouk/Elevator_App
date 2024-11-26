@@ -1,5 +1,7 @@
 ﻿using crudmongo.Models;
 using crudmongo.Services;
+using FirstWebApp.Domaine.services;
+using FirstWebApp.Infra.ServicesImp;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 
@@ -11,10 +13,12 @@ namespace crudmongo.Controllers
     {
         private readonly ElevatorService _elevatorService;
         private readonly ILogger<ElevatorsController> _logger;
+        private readonly IMqttClientService _mqttClientService;
 
-        public ElevatorsController(ElevatorService elevatorService, ILogger<ElevatorsController> logger)
+        public ElevatorsController(ElevatorService elevatorService, ILogger<ElevatorsController> logger, IMqttClientService mqttClientService)
         {
             _elevatorService = elevatorService;
+            _mqttClientService = mqttClientService;
             _logger = logger;
         }
 
@@ -97,6 +101,28 @@ namespace crudmongo.Controllers
 
             _logger.LogInformation($"Elevator with ID: {id} deleted successfully.");
             return NoContent();
+        }
+
+        [HttpPost("connect")]
+        public async Task<IActionResult> ConnectToBroker()
+        {
+            await _mqttClientService.ConnectAsync();
+            return Ok("Connected to MQTT broker");
+        }
+
+
+        [HttpPost("publish")]
+        public async Task<IActionResult> PublishMessage([FromQuery] string topic, [FromQuery] string message)
+        {
+            try
+            {
+                await _mqttClientService.PublishMessageAsync("test/topic", message);
+                return Ok($"Message published to topic {topic}: {message}");
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ex.Message);
+            }
         }
     }
 }

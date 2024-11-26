@@ -1,10 +1,13 @@
 using crudmongo.Configurations;
 using crudmongo.Services;
+using FirstWebApp.Domaine.services;
+using FirstWebApp.Infra.ServicesImp;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.Configure<DatabaseSettings>(builder.Configuration.GetSection(key: "MongoDatabase"));
 builder.Services.AddSingleton<ElevatorService>();
+builder.Services.AddSingleton<IMqttClientService, MqttClientService>();
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
@@ -14,6 +17,8 @@ var app = builder.Build();
 // Configurer WebSockets
 app.UseWebSockets();
 
+var mqttClientService = app.Services.GetRequiredService<IMqttClientService>();
+await mqttClientService.ConnectAsync();
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
